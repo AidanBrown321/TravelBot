@@ -17,3 +17,14 @@ class Swipe(Base):
     swipe_value = Column(String)  # "yes", "no", or "maybe"
 
     destination = relationship("Destination") 
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    
+    swipes = relationship("Swipe", back_populates="user")
