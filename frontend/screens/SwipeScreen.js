@@ -1,237 +1,285 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Dimensions,
-} from "react-native";
-import Swiper from "react-native-deck-swiper";
-import axios from "axios";
-import DestinationCard from "../components/DestinationCard";
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, Image, Dimensions, Animated } from 'react-native';
+import { PanGestureHandler } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 
-// For development, we'll use mock data
+// Mock data (same as before)
 const mockDestinations = [
   {
     id: 1,
-    name: "Paris, France",
-    image_url:
-      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    description:
-      "The City of Light offers iconic architecture, exquisite cuisine, and world-class art museums.",
+    name: 'Paris, France',
+    image_url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34',
+    description: 'The City of Light features iconic landmarks like the Eiffel Tower and world-class cuisine.'
   },
   {
     id: 2,
-    name: "Bali, Indonesia",
-    image_url:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    description:
-      "A tropical paradise with beautiful beaches, lush rice terraces, and a vibrant cultural scene.",
+    name: 'Kyoto, Japan',
+    image_url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e',
+    description: 'Ancient temples, traditional gardens, and geisha culture in Japan\'s former capital.'
   },
   {
     id: 3,
-    name: "Tokyo, Japan",
-    image_url:
-      "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    description:
-      "A bustling metropolis that seamlessly blends ultramodern and traditional aspects of Japanese culture.",
+    name: 'Santorini, Greece',
+    image_url: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e',
+    description: 'Stunning white-washed buildings with blue domes overlooking the Aegean Sea.'
   },
-  {
-    id: 4,
-    name: "New York City, USA",
-    image_url:
-      "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    description:
-      "The Big Apple offers world-class dining, shopping, and entertainment in a fast-paced urban setting.",
-  },
-  {
-    id: 5,
-    name: "Santorini, Greece",
-    image_url:
-      "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
-    description:
-      "Famous for its stunning sunsets, white-washed buildings, and crystal-clear waters.",
-  },
+  // Add more destinations as needed
 ];
 
-const { width, height } = Dimensions.get("window");
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SWIPE_THRESHOLD = 120;
 
-const SwipeScreen = () => {
-  const [destinations, setDestinations] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function SwipeScreen({ navigation }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const position = useRef(new Animated.ValueXY()).current;
+  const rotation = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: ['-10deg', '0deg', '10deg'],
+    extrapolate: 'clamp'
+  });
 
-  useEffect(() => {
-    // In a real app, we would fetch from the API
-    // axios.get('http://localhost:8000/destinations')
-    //   .then(response => {
-    //     setDestinations(response.data);
-    //     setLoading(false);
-    //   })
-    //   .catch(error => {
-    //     console.error('Error fetching destinations:', error);
-    //     setLoading(false);
-    //   });
+  const likeOpacity = position.x.interpolate({
+    inputRange: [0, SCREEN_WIDTH / 4],
+    outputRange: [0, 1],
+    extrapolate: 'clamp'
+  });
 
-    // For now, use mock data
-    setDestinations(mockDestinations);
-    setLoading(false);
-  }, []);
+  const nopeOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 4, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp'
+  });
 
-  const handleSwipe = (direction, destinationId) => {
-    let swipeValue = "";
+  const maybeOpacity = position.y.interpolate({
+    inputRange: [-SCREEN_HEIGHT / 6, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp'
+  });
 
-    if (direction === "left") {
-      swipeValue = "no";
-    } else if (direction === "right") {
-      swipeValue = "yes";
-    } else if (direction === "top") {
-      swipeValue = "maybe";
+  const nextCardOpacity = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [1, 0, 1],
+    extrapolate: 'clamp'
+  });
+
+  const nextCardScale = position.x.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: [1, 0.8, 1],
+    extrapolate: 'clamp'
+  });
+
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: position.x, translationY: position.y } }],
+    { useNativeDriver: false }
+  );
+
+  const onHandlerStateChange = (event) => {
+    if (event.nativeEvent.oldState === 4) {
+      const { translationX, translationY } = event.nativeEvent;
+
+      let direction = null;
+
+      if (translationX > SWIPE_THRESHOLD) {
+        direction = 'right';
+      } else if (translationX < -SWIPE_THRESHOLD) {
+        direction = 'left';
+      } else if (translationY < -SWIPE_THRESHOLD) {
+        direction = 'up';
+      }
+
+      if (direction) {
+        // Complete the swipe animation
+        Animated.timing(position, {
+          toValue: {
+            x: direction === 'right' ? SCREEN_WIDTH + 100 : direction === 'left' ? -SCREEN_WIDTH - 100 : 0,
+            y: direction === 'up' ? -SCREEN_HEIGHT - 100 : 0
+          },
+          duration: 200,
+          useNativeDriver: false
+        }).start(() => {
+          // Handle swipe action based on direction
+          if (direction === 'right') {
+            console.log('Added to favorites');
+          } else if (direction === 'up') {
+            console.log('Added to maybe list');
+          }
+          
+          // Move to next card
+          setCurrentIndex(prevIndex => prevIndex + 1);
+          position.setValue({ x: 0, y: 0 });
+        });
+      } else {
+        // Reset card position
+        Animated.spring(position, {
+          toValue: { x: 0, y: 0 },
+          friction: 5,
+          useNativeDriver: false
+        }).start();
+      }
     }
-
-    // In a real app, we would send this to the API
-    console.log(`Swiped ${swipeValue} on destination ${destinationId}`);
-
-    // axios.post('http://localhost:8000/swipe', {
-    //   user_id: 1, // In a real app, this would be the actual user ID
-    //   destination_id: destinationId,
-    //   swipe_value: swipeValue
-    // })
-    // .then(response => {
-    //   console.log('Swipe recorded:', response.data);
-    // })
-    // .catch(error => {
-    //   console.error('Error recording swipe:', error);
-    // });
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Loading destinations...</Text>
-      </View>
-    );
-  }
+  const renderCards = () => {
+    if (currentIndex >= mockDestinations.length) {
+      return (
+        <View style={styles.endMessage}>
+          <Text style={styles.endMessageText}>No more destinations to show!</Text>
+          <Text>Pull down to refresh</Text>
+        </View>
+      );
+    }
+
+    return mockDestinations.map((destination, index) => {
+      if (index < currentIndex) return null;
+
+      if (index === currentIndex) {
+        return (
+          <PanGestureHandler
+            key={destination.id}
+            onGestureEvent={onGestureEvent}
+            onHandlerStateChange={onHandlerStateChange}
+          >
+            <Animated.View
+              style={[
+                styles.card,
+                {
+                  transform: [
+                    { translateX: position.x },
+                    { translateY: position.y },
+                    { rotate: rotation }
+                  ]
+                }
+              ]}
+            >
+              <Image
+                source={{ uri: destination.image_url }}
+                style={styles.image}
+              />
+              <View style={styles.cardContent}>
+                <Text style={styles.name}>{destination.name}</Text>
+                <Text style={styles.description}>{destination.description}</Text>
+              </View>
+
+              <Animated.View style={[styles.swipeHint, styles.leftHint, { opacity: nopeOpacity }]}>
+                <Ionicons name="close-circle" size={50} color="red" />
+                <Text style={styles.hintText}>Nope</Text>
+              </Animated.View>
+              
+              <Animated.View style={[styles.swipeHint, styles.topHint, { opacity: maybeOpacity }]}>
+                <Ionicons name="help-circle" size={50} color="blue" />
+                <Text style={styles.hintText}>Maybe</Text>
+              </Animated.View>
+              
+              <Animated.View style={[styles.swipeHint, styles.rightHint, { opacity: likeOpacity }]}>
+                <Ionicons name="heart-circle" size={50} color="green" />
+                <Text style={styles.hintText}>Like</Text>
+              </Animated.View>
+            </Animated.View>
+          </PanGestureHandler>
+        );
+      }
+
+      return (
+        <Animated.View
+          key={destination.id}
+          style={[
+            styles.card,
+            {
+              opacity: nextCardOpacity,
+              transform: [{ scale: nextCardScale }],
+              zIndex: mockDestinations.length - index
+            }
+          ]}
+        >
+          <Image
+            source={{ uri: destination.image_url }}
+            style={styles.image}
+          />
+          <View style={styles.cardContent}>
+            <Text style={styles.name}>{destination.name}</Text>
+            <Text style={styles.description}>{destination.description}</Text>
+          </View>
+        </Animated.View>
+      );
+    }).reverse();
+  };
 
   return (
     <View style={styles.container}>
-      {destinations.length > 0 ? (
-        <Swiper
-          cards={destinations}
-          renderCard={(destination) => (
-            <DestinationCard destination={destination} />
-          )}
-          onSwipedLeft={(cardIndex) =>
-            handleSwipe("left", destinations[cardIndex].id)
-          }
-          onSwipedRight={(cardIndex) =>
-            handleSwipe("right", destinations[cardIndex].id)
-          }
-          onSwipedTop={(cardIndex) =>
-            handleSwipe("top", destinations[cardIndex].id)
-          }
-          cardIndex={0}
-          backgroundColor="#f8f9fa"
-          stackSize={3}
-          stackSeparation={15}
-          cardVerticalMargin={20}
-          cardHorizontalMargin={10}
-          animateOverlayLabelsOpacity
-          animateCardOpacity
-          swipeBackCard
-          verticalSwipe={true}
-          overlayLabels={{
-            left: {
-              title: "NOPE",
-              style: {
-                label: {
-                  backgroundColor: "#e74c3c",
-                  color: "white",
-                  fontSize: 24,
-                  borderRadius: 5,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  justifyContent: "flex-start",
-                  marginTop: 30,
-                  marginLeft: -30,
-                },
-              },
-            },
-            right: {
-              title: "YES!",
-              style: {
-                label: {
-                  backgroundColor: "#2ecc71",
-                  color: "white",
-                  fontSize: 24,
-                  borderRadius: 5,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  justifyContent: "flex-start",
-                  marginTop: 30,
-                  marginLeft: 30,
-                },
-              },
-            },
-            top: {
-              title: "MAYBE",
-              style: {
-                label: {
-                  backgroundColor: "#f39c12",
-                  color: "white",
-                  fontSize: 24,
-                  borderRadius: 5,
-                  padding: 10,
-                },
-                wrapper: {
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-              },
-            },
-          }}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No more destinations to show!</Text>
-        </View>
-      )}
+      {renderCards()}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
+  card: {
+    position: 'absolute',
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.7,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    overflow: 'hidden',
   },
-  loadingText: {
-    marginTop: 10,
+  image: {
+    width: '100%',
+    height: '70%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  cardContent: {
+    padding: 20,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  description: {
     fontSize: 16,
-    color: "#7f8c8d",
+    color: '#666',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  swipeHint: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  emptyText: {
+  leftHint: {
+    top: 30,
+    left: 30,
+  },
+  rightHint: {
+    top: 30,
+    right: 30,
+  },
+  topHint: {
+    top: 50,
+    alignSelf: 'center',
+  },
+  hintText: {
     fontSize: 18,
-    color: "#7f8c8d",
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+  endMessage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  endMessageText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
 });
-
-export default SwipeScreen;

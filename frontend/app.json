@@ -1,5 +1,6 @@
 {
   "expo": {
+    "sdkVersion": "53.0.0",
     "name": "TravelSwipeApp",
     "slug": "travel-swipe-app",
     "version": "1.0.0",
