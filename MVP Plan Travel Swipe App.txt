@@ -1,0 +1,64 @@
+# MVP Plan for Travel Swipe App
+
+## 1. Core Features
+- Swipe Interface:
+  - Display a series of destination cards.
+  - Users swipe left (no), right (yes), or top (maybe).
+  - Store these swipes in the database for future recommendations.
+
+- Basic User Authentication:
+  - Register and login screens in React Native.
+  - Backend endpoints in FastAPI using JWT.
+
+- AI/ML Recommendation (Initial Placeholder):
+  - Collect user swipes (yes/no/maybe).
+  - Simple data-driven approach for version 1.
+  - Future: integrate a more sophisticated ML model to recommend new destinations.
+
+## 2. Tech Stack
+- **Frontend**: React Native (Expo)
+  - [App.js](frontend/App.js) for navigation
+  - [SwipeScreen.js](frontend/screens/SwipeScreen.js) for swipe logic
+  - [AuthContext.js](frontend/src/contexts/AuthContext.js) for authentication
+- **Backend**: FastAPI + SQLite (changeable to PostgreSQL later)
+  - [main.py](backend/app/main.py) for routes
+  - [models.py](backend/app/models.py) & [schemas.py](backend/app/schemas.py) for data models
+  - [auth.py](backend/app/auth.py) for user authentication
+- **AI/ML**: Currently collecting data from user swipes, will add a recommendation engine later.
+
+## 3. Data Flow
+1. Users open the app → See [HomeScreen.js](frontend/screens/HomeScreen.js).
+2. Swipe through destinations ([SwipeScreen.js](frontend/screens/SwipeScreen.js)).
+3. Each swipe triggers a POST request to `/swipe` endpoint ([main.py](backend/app/main.py)).
+4. Data stored in `swipes` table ([models.py](backend/app/models.py)).
+5. Recommendation logic eventually uses “swipes” to show relevant destinations.
+
+## 4. High-Level Tasks
+1. **Finish Core Swipe UI**:
+   - Ensure swipes are captured and posted to backend.
+2. **Improve Auth Flow**:
+   - Confirm token usage is correct.
+   - Protect routes that need authentication.
+3. **Simple Recommendation Stub**:
+   - Filter out destinations the user has already swiped.
+   - Start storing attributes (country, climate, cost) for a basic matching approach.
+4. **Enhanced AI/ML** (*future milestone*):
+   - Incorporate user data to predict swipes on new destinations.
+   - Possibly integrate a lightweight ML model or external API for suggestions.
+
+## 5. Deployment & Testing
+- **Backend**: 
+  - Run with `uvicorn app.main:app --reload`
+  - Use [pytest](https://docs.pytest.org/) for automated testing.
+- **Frontend**:
+  - `npm install`, then `npm start`
+  - Test on iOS, Android, and Web via Expo
+- **Integration**:
+  - Confirm API requests from frontend to backend.
+  - Check user registration, login, and swipe logic end-to-end.
+
+## 6. Future Enhancements
+- External travel APIs for real-time pricing and weather.
+- More sophisticated ML-based recommendation system.
+- Offline mode and caching.
+- Push notifications for new or discounted destinations.
